@@ -1,0 +1,31 @@
+# Build products
+/build/
+/out/
+/bin/
+/lib/
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dll
+*.dylib
+*.exe
+
+# Compiler and IDE state
+compile_commands.json
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+CTestTestfile.cmake
+Testing/
+.vs/
+.vscode/
+*.user
+*.suo
+
+# Project-local generated data
+/.incppbuild-cache/
+/build_cache.json
+/work/
+/outputs/
