@@ -1,4 +1,6 @@
 #include "incppbuild/fingerprint/fingerprint.hpp"
+#include "incppbuild/normalization/Canonicalizer.hpp"
+#include <algorithm>
 #include <sstream>
 #include <iomanip>
 #include <cstring>
@@ -120,4 +122,50 @@ std::string Fingerprinter::computeSHA256(const std::string& input) {
         ss << std::hex << std::setw(2) << std::setfill('0') << (int)hash[i];
     }
     return ss.str();
+}
+
+FunctionFingerprint Fingerprinter::fingerprintFunction(const FunctionAST& function) {
+    Canonicalizer canonicalizer;
+    FunctionFingerprint result;
+    result.functionName = function.functionName;
+    result.interfaceCanonicalForm = canonicalizer.canonicalizeInterface(function);
+    result.implementationCanonicalForm = canonicalizer.canonicalizeImplementation(function);
+    result.interfaceHash = computeSHA256(result.interfaceCanonicalForm);
+    result.implementationHash = computeSHA256(result.implementationCanonicalForm);
+    result.canonicalForm = result.interfaceCanonicalForm + "Implementation" + result.implementationCanonicalForm;
+    result.hash = computeSHA256(result.canonicalForm);
+    return result;
+}
+
+TranslationUnitFingerprint Fingerprinter::fingerprintTranslationUnit(
+    const std::string& sourceName, const std::vector<FunctionAST>& functions) {
+    TranslationUnitFingerprint result;
+    result.sourceName = sourceName;
+    result.functions.reserve(functions.size());
+    for (const auto& function : functions) {
+        result.functions.push_back(fingerprintFunction(function));
+    }
+
+    std::sort(result.functions.begin(), result.functions.end(),
+        [](const FunctionFingerprint& left, const FunctionFingerprint& right) {
+            if (left.functionName != right.functionName) return left.functionName < right.functionName;
+            return left.canonicalForm < right.canonicalForm;
+        });
+
+    std::ostringstream interfaceAggregate;
+    std::ostringstream implementationAggregate;
+    std::ostringstream aggregate;
+    interfaceAggregate << "TranslationUnitInterfaceV1\n";
+    implementationAggregate << "TranslationUnitImplementationV1\n";
+    aggregate << "TranslationUnitV2\n";
+    for (const auto& function : result.functions) {
+        const auto prefix = std::to_string(function.functionName.size()) + ':' + function.functionName + ':';
+        interfaceAggregate << prefix << function.interfaceHash << '\n';
+        implementationAggregate << prefix << function.implementationHash << '\n';
+        aggregate << prefix << function.hash << '\n';
+    }
+    result.interfaceHash = computeSHA256(interfaceAggregate.str());
+    result.implementationHash = computeSHA256(implementationAggregate.str());
+    result.hash = computeSHA256(aggregate.str());
+    return result;
 }

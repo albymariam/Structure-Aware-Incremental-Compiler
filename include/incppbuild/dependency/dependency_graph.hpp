@@ -1,5 +1,7 @@
 #pragma once
 
+#include "incppbuild/core/change.hpp"
+
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -13,6 +15,13 @@ public:
 
     [[nodiscard]] std::vector<std::string>
     affected_by(const std::vector<std::string>& changed_units) const;
+
+    // Applies the project's change policy to a set of changed source units.
+    // Interface changes traverse the reverse dependency graph; body-only
+    // changes rebuild only their own translation unit.
+    [[nodiscard]] std::vector<std::string>
+    affected_by_change(const std::vector<std::string>& changed_units,
+                       ChangeLevel level) const;
 
 private:
     std::unordered_map<std::string, std::vector<std::string>> dependents_;

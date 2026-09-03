@@ -4,6 +4,49 @@
 #include <iostream>
 #include <regex>
 
+namespace {
+
+std::shared_ptr<ASTNode> parseExpression(const std::string& expression) {
+    std::string trimmed = expression;
+    const auto first = trimmed.find_first_not_of(" \t");
+    if (first == std::string::npos) return nullptr;
+    trimmed.erase(0, first);
+    const auto last = trimmed.find_last_not_of(" \t;");
+    trimmed.erase(last + 1);
+
+    for (const char* operationText : {"+", "*"}) {
+        const std::string operation(operationText);
+        const auto operatorPosition = trimmed.find(operation);
+        if (operatorPosition == std::string::npos) continue;
+
+        auto binary = std::make_shared<ASTNode>(
+            ASTNodeType::BinaryOperator, "", "", operation);
+        const auto left = trimmed.substr(0, operatorPosition);
+        const auto right = trimmed.substr(operatorPosition + operation.size());
+
+        const auto makeOperand = [](std::string operand) {
+            const auto firstNonSpace = operand.find_first_not_of(" \t");
+            const auto lastNonSpace = operand.find_last_not_of(" \t");
+            operand = operand.substr(firstNonSpace, lastNonSpace - firstNonSpace + 1);
+            const bool isNumber = !operand.empty() &&
+                operand.find_first_not_of("0123456789.") == std::string::npos;
+            return std::make_shared<ASTNode>(
+                isNumber ? ASTNodeType::Literal : ASTNodeType::VarRef,
+                isNumber ? "" : operand,
+                "",
+                isNumber ? operand : "");
+        };
+
+        binary->addChild(makeOperand(left));
+        binary->addChild(makeOperand(right));
+        return binary;
+    }
+
+    return std::make_shared<ASTNode>(ASTNodeType::VarRef, trimmed);
+}
+
+}
+
 std::vector<FunctionAST> ASTParser::parseSourceFile(const std::string& filepath) {
     std::ifstream inFile(filepath);
     if (!inFile.is_open()) {
@@ -85,17 +128,16 @@ std::vector<FunctionAST> ASTParser::parseSourceContent(const std::string& conten
                 ifNode->addChild(std::make_shared<ASTNode>(ASTNodeType::BinaryOperator, "", "", "cond"));
                 bodyNode->addChild(ifNode);
             } else if (line.find('=') != std::string::npos) {
-                auto declNode = std::make_shared<ASTNode>(ASTNodeType::VarDecl, "subtotal", "double");
-                if (line.find('*') != std::string::npos) {
-                    auto binOp = std::make_shared<ASTNode>(ASTNodeType::BinaryOperator, "", "", "*");
-                    binOp->addChild(std::make_shared<ASTNode>(ASTNodeType::VarRef, "price"));
-                    binOp->addChild(std::make_shared<ASTNode>(ASTNodeType::VarRef, "quantity"));
-                    declNode->addChild(binOp);
-                } else if (line.find('+') != std::string::npos) {
-                    auto binOp = std::make_shared<ASTNode>(ASTNodeType::BinaryOperator, "", "", "+");
-                    binOp->addChild(std::make_shared<ASTNode>(ASTNodeType::VarRef, "price"));
-                    binOp->addChild(std::make_shared<ASTNode>(ASTNodeType::VarRef, "quantity"));
-                    declNode->addChild(binOp);
+                const auto equalsPosition = line.find('=');
+                const auto declaration = line.substr(0, equalsPosition);
+                const auto nameEnd = declaration.find_last_not_of(" \t");
+                const auto nameStart = declaration.find_last_of(" \t", nameEnd);
+                const std::string variableName = declaration.substr(nameStart + 1, nameEnd - nameStart);
+                const std::string variableType = declaration.substr(0, nameStart);
+                auto declNode = std::make_shared<ASTNode>(
+                    ASTNodeType::VarDecl, variableName, variableType);
+                if (auto expression = parseExpression(line.substr(equalsPosition + 1))) {
+                    declNode->addChild(expression);
                 }
                 bodyNode->addChild(declNode);
             }

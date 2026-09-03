@@ -10,12 +10,21 @@ enum class ASTNodeType {
     ParamDecl,
     VarDecl,
     CompoundStmt,
+    DeclStmt,
     ReturnStmt,
     IfStmt,
+    ElseStmt,
+    ForStmt,
+    WhileStmt,
+    DoStmt,
     BinaryOperator,
+    UnaryOperator,
+    ConditionalOperator,
+    CastExpr,
     VarRef,
     Literal,
-    CallExpr
+    CallExpr,
+    UnknownExpr
 };
 
 struct ASTNode {
@@ -37,6 +46,7 @@ struct FunctionAST {
     std::string functionName;
     std::string returnType;
     std::vector<std::string> paramTypes;
+    std::string visibility = "unspecified";
     std::shared_ptr<ASTNode> rootNode;
 };
 

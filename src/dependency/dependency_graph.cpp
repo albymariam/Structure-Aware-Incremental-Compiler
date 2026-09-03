@@ -31,4 +31,25 @@ DependencyGraph::affected_by(const std::vector<std::string>& changed_units) cons
     return result;
 }
 
+std::vector<std::string>
+DependencyGraph::affected_by_change(const std::vector<std::string>& changed_units,
+                                    ChangeLevel level) const {
+    if (!requires_recompilation(level)) {
+        // Formatting and safe local renames preserve the structural cache key.
+        return {};
+    }
+    if (invalidates_dependents(level)) {
+        return affected_by(changed_units);
+    }
+
+    // A body-only edit invalidates its own object, but its public interface has
+    // not changed, so reverse dependents can keep their existing objects.
+    std::vector<std::string> result;
+    std::unordered_set<std::string> seen;
+    for (const auto& unit : changed_units) {
+        if (seen.insert(unit).second) result.push_back(unit);
+    }
+    return result;
+}
+
 }  // namespace incppbuild

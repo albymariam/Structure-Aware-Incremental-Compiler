@@ -10,6 +10,12 @@ struct CachedFunctionInfo {
     std::string sourceFile;
     std::string canonicalAST;
     std::string fingerprint;
+    std::string interfaceFingerprint;
+    std::string implementationFingerprint;
+    std::string translationUnitFingerprint;
+    std::string objectPath;
+    std::string compilerInfo;
+    std::vector<std::string> dependencies;
     std::string lastModifiedTime;
 };
 
@@ -25,7 +31,11 @@ public:
     bool saveCache();
 
     void updateEntry(const std::string& file, const std::string& funcName, const std::string& canonicalAST, const std::string& fingerprint);
+    void updateEntry(CachedFunctionInfo entry);
     const CachedFunctionInfo* getEntry(const std::string& file, const std::string& funcName) const;
+    [[nodiscard]] bool hasValidEntry(const std::string& file, const std::string& funcName,
+                                     const std::string& expectedFingerprint = {}) const;
+    [[nodiscard]] const std::unordered_map<std::string, CachedFunctionInfo>& entries() const noexcept;
 
     void printCacheSummary() const;
 };
